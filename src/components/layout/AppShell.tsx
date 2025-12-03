@@ -4,7 +4,6 @@ import type { PageKey } from '@/types';
 import { useRouter, usePathname } from 'next/navigation';
 import Navbar from './Navbar';
 import Modal from '@/components/common/Modal';
-import ShareContent from '@/components/business/ShareContent';
 import LoginContent from '@/components/business/LoginContent';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -45,10 +44,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} title="欢迎回来">
         <LoginContent onLogin={() => setIsLoginOpen(false)} />
-      </Modal>
-
-      <Modal isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} title="传递爱意">
-        <ShareContent />
       </Modal>
     </div>
   );

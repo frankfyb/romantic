@@ -1,24 +1,52 @@
-import { notFound } from 'next/navigation';
-import { ToolConfigService } from '@/lib/supabase';
-import WarmTextCardDisplayUI from '@/tools/warm-text-card/DisplayUI';
+"use client";
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { ToolService } from '@/services/supabase/toolService';
+import { ToolKey } from '@/types/tool';
+import { getToolUI } from '@/config/toolsRegistry';
 
-// 服务端组件：先查询配置，再渲染
-export default async function ToolSharePage({
-  params
-}: {
-  params: Promise<{ ritual: string; id: string }>;
-}) {
-  try {
-    const { ritual, id } = await params;
-    const { config, tool_name } = await ToolConfigService.getById(id);
-    
-    // 2. 验证工具名称匹配（防止跨工具访问）
-    if (tool_name !== ritual) notFound();
-    
-    // 3. 渲染预览界面（无配置面板）
-    return <WarmTextCardDisplayUI config={config} isPreview={true} />;
-  } catch (err) {
-    // 配置不存在/查询失败，返回 404
-    notFound();
+export default function ToolSharePage() {
+  const { ritual, id } = useParams<{ ritual: ToolKey; id: string }>();
+  const [configRecord, setConfigRecord] = useState<any | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!id || !ritual) return;
+      try {
+        const rec = await ToolService.getConfigByShareId(String(id));
+        if (!rec || rec.tool_key !== ritual) {
+          setFailed(true);
+          return;
+        }
+        setConfigRecord(rec);
+      } catch {
+        setFailed(true);
+      }
+    };
+    run();
+  }, [id, ritual]);
+
+  if (failed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-500">
+        分享链接无效或已过期
+      </div>
+    );
   }
+
+  if (!configRecord) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-500">
+        加载分享配置中...
+      </div>
+    );
+  }
+
+  const DisplayUI = getToolUI(ritual as ToolKey);
+  return (
+    <div className="min-h-screen">
+      <DisplayUI config={configRecord.config} isPreview={true} />
+    </div>
+  );
 }

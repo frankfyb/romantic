@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css'; // 需创建全局样式文件（Tailwind入口）
 import AppShell from '@/components/layout/AppShell';
+import AppProviders from '@/components/providers/AppProviders';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,7 +19,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className={`min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-yellow-50 font-sans text-slate-700 selection:bg-rose-200 selection:text-rose-700 ${inter.className}`}>
-        <AppShell>{children}</AppShell>
+        <AppProviders>
+          <AppShell>{children}</AppShell>
+        </AppProviders>
       </body>
     </html>
   );

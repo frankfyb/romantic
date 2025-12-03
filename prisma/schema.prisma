@@ -1,56 +1,98 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// 核心修改：补充 Account/Session 的反向关联字段
+
+
+// ------------------------------
+// NextAuth 核心模型（自动管理令牌/会话/用户）
+// ------------------------------
+
+// 用户主表（NextAuth 自动关联，存储基础信息+验证状态）
 model User {
-  id            String      @id @default(cuid())
-  name          String?     @default("微信用户")
-  wechatOpenId  String?     @unique
-  wechatBindAt  DateTime?
-  image         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  // 新增：反向关联 Account 模型（一对多）
+  id            String    @id @default(cuid())
+  name          String?   // 昵称
+  email         String    @unique // 登录邮箱（唯一）
+  emailVerified DateTime? // 邮箱验证时间（NextAuth 自动更新）
+  passwordHash  String?   // 密码哈希（自定义登录用）
+  image         String?   // 头像（可选）
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联 NextAuth 内置模型
   accounts      Account[]
-  // 新增：反向关联 Session 模型（一对多）
   sessions      Session[]
+  // 🔥 修复：移除直接关联（NextAuth 的 VerificationToken 不存储 userId，只存 identifier）
+  // verificationTokens VerificationToken[] // 该关联会报错，因为 VerificationToken 无 userId 字段
+
+  // 可选：关联自定义验证码表
+  emailVerifyCodes EmailVerifyCode[]
 }
 
+// 第三方账号关联表（NextAuth OAuth 用，如Google/GitHub登录）
 model Account {
   id                String  @id @default(cuid())
   userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  type              String  // 账号类型（oauth/email/credentials）
+  provider          String  // 服务商（google/github/email）
+  providerAccountId String  // 服务商账号ID
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
+// 会话表（NextAuth 管理登录态）
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
+  sessionToken String   @unique // 会话令牌
   userId       String
-  expires      DateTime
+  expires      DateTime // 会话过期时间
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model WechatVerifyCode {
+// NextAuth 核心：验证/重置令牌表（自动生成/存储/校验/过期）
+// 👉 关键：NextAuth 自动管理该表，无需手动操作
+// 👉 注意：该表只存储 identifier(邮箱)、token、expires，不存储 userId
+model VerificationToken {
+  identifier String   // 关联的邮箱（NextAuth 用该字段匹配用户，而非 userId）
+  token      String   @unique // NextAuth 生成的加密令牌（64位随机字符串）
+  expires    DateTime // 令牌过期时间（由 maxAge 配置自动计算）
+
+  @@unique([identifier, token]) // 邮箱+令牌唯一，防止重复
+}
+
+// ------------------------------
+// 自定义模型（业务场景补充）
+// ------------------------------
+
+// 自定义验证码表（用于登录/注册的6位数字验证码）
+model EmailVerifyCode {
   id        String   @id @default(cuid())
-  openid    String   @unique
-  code      String
-  expires   DateTime
-  isUsed    Boolean  @default(false)
+  email     String   // 接收验证码的邮箱
+  code      String   // 6位数字验证码
+  type      String   // 用途（LOGIN/REGISTER/RESET）
+  isUsed    Boolean  @default(false) // 是否已使用
+  expires   DateTime // 验证码过期时间（通常5-10分钟）
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联用户（可选）
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 唯一索引：防止同一邮箱同一类型重复生成未使用的验证码
+  @@unique([email, type, isUsed])
 }
