@@ -2,15 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ToolService } from '@/services/supabase/toolService';
 import { ToolKey } from '@/types/tool';
 import { getToolUI } from '@/config/toolsRegistry';
 import { CheckCircle, AlertCircle } from 'lucide-react';
-import { createSupabaseClient } from '@/lib/supabase';
+import { useSession } from 'next-auth/react';
 import { getToolDefaultConfig, getToolName } from '@/config/toolsRegistry';
+
+// 定义工具元信息类型
+interface ToolMetadata {
+  toolKey: string;
+  toolName: string;
+  description?: string;
+  defaultConfig: Record<string, any>;
+  tag?: string;
+  category?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function ToolEditPage() {
   const { ritual } = useParams<{ ritual: ToolKey }>();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [config, setConfig] = useState<Record<string, any>>({});
   const [toolName, setToolName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -24,21 +38,30 @@ export default function ToolEditPage() {
     const initTool = async () => {
       if (!ritual) return;
       
-      // 获取工具元信息
-      const metadata = await ToolService.getToolMetadata(ritual);
-      if (!metadata) {
-        try {
-          setToolName(getToolName(ritual));
-          setConfig(getToolDefaultConfig(ritual));
-          return;
-        } catch {
-          router.push('/404');
-          return;
+      try {
+        // 尝试从API获取工具元信息
+        const res = await fetch(`/api/tools/meta/${ritual}`);
+        if (res.ok) {
+          const json = await res.json();
+          const metadata = json?.data;
+          if (metadata) {
+            setToolName(metadata.toolName);
+            setConfig(metadata.defaultConfig);
+            return;
+          }
         }
+      } catch (error) {
+        console.warn('Failed to fetch tool metadata from API:', error);
       }
-
-      setToolName(metadata.tool_name);
-      setConfig(metadata.default_config);
+      
+      // 如果API获取失败，使用本地配置
+      try {
+        setToolName(getToolName(ritual));
+        setConfig(getToolDefaultConfig(ritual));
+      } catch (error) {
+        console.error('Failed to get tool config:', error);
+        router.push('/404');
+      }
     };
 
     initTool();
@@ -60,24 +83,26 @@ export default function ToolEditPage() {
 
     setIsSaving(true);
     try {
-      // 1. 获取当前用户ID（登录态，可选）
-      const supabase = createSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // 1. 获取当前登录用户（NextAuth 会话）
+      const userId = session?.user?.id;
+      if (status !== 'authenticated' || !userId) {
         setNotification({ type: 'error', message: '请先登录后再生成分享链接' });
         return;
       }
       
-      // 2. 保存配置并生成分享ID
-      const { shareId } = await ToolService.saveConfig(
-        ritual,
-        config,
-        {
-          userId: user.id,
-          // 可选：设置24小时过期
+      // 2. 保存配置并生成分享ID（调用API，确保服务端会话校验）
+      const res = await fetch('/api/tools/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toolKey: ritual,
+          config,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        }
-      );
+        }),
+      });
+      if (!res.ok) throw new Error(`保存失败：${res.status}`);
+      const json = await res.json();
+      const shareId = json?.data?.shareId;
 
       // 3. 生成分享链接并复制
       const shareLink = `${window.location.origin}/rituals/${ritual}/share/${shareId}`;
@@ -128,12 +153,12 @@ export default function ToolEditPage() {
           <span>{notification.message}</span>
         </div>
       )}
-
+      
       {/* 页面标题 */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 text-xl font-medium text-slate-800">
         {toolName} - 配置页
       </div>
-
+      
       {/* 生成分享链接按钮 */}
       <button
         onClick={generateShareLink}
@@ -142,7 +167,7 @@ export default function ToolEditPage() {
       >
         {isSaving ? '生成中...' : '生成分享链接'}
       </button>
-
+      
       {/* 工具配置UI */}
       <DisplayUI
         config={config}

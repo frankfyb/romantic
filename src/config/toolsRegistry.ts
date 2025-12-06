@@ -3,50 +3,121 @@ import WarmTextCardDisplayUI from '@/tools/warm-text-card/DisplayUI';
 import { defaultConfig as warmTextDefaultConfig } from '@/tools/warm-text-card/config';
 import TimeCapsuleDisplayUI from '@/tools/time-capsule/DisplayUI';
 import { defaultConfig as timeCapsuleDefaultConfig } from '@/tools/time-capsule/config';
+import StarrySkyDisplayUI from '@/tools/starry-sky/DisplayUI';
+import { defaultConfig as starrySkyDefaultConfig } from '@/tools/starry-sky/config';
+import MemoryBoxDisplayUI from '@/tools/memory-box/DisplayUI';
+import { defaultConfig as memoryBoxDefaultConfig } from '@/tools/memory-box/config';
 
+// ========================== 类型定义（强化类型约束）==========================
+/**
+ * 工具基础配置项类型
+ */
+interface ToolBasicConfig {
+  // 工具显示名称
+  name: string;
+  // 工具可视化组件
+  DisplayUI: React.ComponentType<{
+    config: Record<string, any>;
+    isPreview: boolean;
+    onConfigChange?: (config: Record<string, any>) => void;
+  }>;
+  // 工具默认配置
+  defaultConfig: Record<string, any>;
+}
 
+/**
+ * 工具注册表类型（关联工具标识和完整配置）
+ */
+type ToolRegistry = Record<ToolKey, ToolBasicConfig>;
 
-// 工具UI映射（关联工具标识和可视化组件）
-export const toolUIRegistry: Record<ToolKey, React.ComponentType<{
-  config: Record<string, any>;
-  isPreview: boolean;
-  onConfigChange?: (config: Record<string, any>) => void;
-}>> = {
-  'warm-text-card': WarmTextCardDisplayUI,
-  'time-capsule': TimeCapsuleDisplayUI,
+// ========================== 核心配置（聚合管理）==========================
+/**
+ * 工具核心配置注册表（所有工具配置统一管理）
+ * 新增/删除工具只需修改这个对象，无需维护多个分散的注册表
+ */
+const toolRegistry: ToolRegistry = {
+  'warm-text-card': {
+    name: '温馨文字卡片',
+    DisplayUI: WarmTextCardDisplayUI,
+    defaultConfig: warmTextDefaultConfig,
+  },
+  'time-capsule': {
+    name: '时光胶囊',
+    DisplayUI: TimeCapsuleDisplayUI,
+    defaultConfig: timeCapsuleDefaultConfig,
+  },
+  'starry-sky': {
+    name: '星河情书',
+    DisplayUI: StarrySkyDisplayUI,
+    defaultConfig: starrySkyDefaultConfig,
+  },
+  'memory-box': {
+    name: '回忆盲盒',
+    DisplayUI: MemoryBoxDisplayUI,
+    defaultConfig: memoryBoxDefaultConfig,
+  },
 };
 
-// 获取工具UI组件（带校验）
+// ========================== 通用工具函数（统一封装）==========================
+/**
+ * 通用获取工具配置的方法（基础封装，避免重复逻辑）
+ */
+const getToolConfig = <T extends keyof ToolBasicConfig>(
+  toolKey: ToolKey,
+  configKey: T
+): ToolBasicConfig[T] => {
+  const toolConfig = toolRegistry[toolKey];
+  if (!toolConfig) {
+    throw new Error(`未找到工具【${toolKey}】的基础配置`);
+  }
+
+  const targetConfig = toolConfig[configKey];
+  if (!targetConfig) {
+    throw new Error(`未找到工具【${toolKey}】的${configKey}配置`);
+  }
+
+  return targetConfig;
+};
+
+/**
+ * 获取工具UI组件
+ */
 export const getToolUI = (toolKey: ToolKey) => {
-  const UIComponent = toolUIRegistry[toolKey];
-  if (!UIComponent) {
-    throw new Error(`未找到工具${toolKey}的UI组件`);
-  }
-  return UIComponent;
+  return getToolConfig(toolKey, 'DisplayUI');
 };
 
-const toolDefaultConfigRegistry: Record<ToolKey, Record<string, any>> = {
-  'warm-text-card': warmTextDefaultConfig,
-  'time-capsule': timeCapsuleDefaultConfig,
-};
-
+/**
+ * 获取工具默认配置
+ */
 export const getToolDefaultConfig = (toolKey: ToolKey) => {
-  const cfg = toolDefaultConfigRegistry[toolKey];
-  if (!cfg) {
-    throw new Error(`未找到工具${toolKey}的默认配置`);
-  }
-  return cfg;
+  return getToolConfig(toolKey, 'defaultConfig');
 };
 
-const toolNameRegistry: Record<ToolKey, string> = {
-  'warm-text-card': '温馨文字卡片',
-  'time-capsule': '时光胶囊',
-};
-
+/**
+ * 获取工具显示名称
+ */
 export const getToolName = (toolKey: ToolKey) => {
-  const name = toolNameRegistry[toolKey];
-  if (!name) {
-    throw new Error(`未找到工具${toolKey}的名称`);
-  }
-  return name;
+  return getToolConfig(toolKey, 'name');
 };
+
+/**
+ * 获取所有工具标识列表（方便遍历/下拉选择等场景）
+ */
+export const getToolKeyList = (): ToolKey[] => {
+  return Object.keys(toolRegistry) as ToolKey[];
+};
+
+/**
+ * 获取工具的完整配置（适用于需要同时使用多个配置项的场景）
+ */
+export const getToolFullConfig = (toolKey: ToolKey): ToolBasicConfig => {
+  const toolConfig = toolRegistry[toolKey];
+  if (!toolConfig) {
+    throw new Error(`未找到工具【${toolKey}】的完整配置`);
+  }
+  // 返回深拷贝，避免外部修改影响原始配置
+  return JSON.parse(JSON.stringify(toolConfig));
+};
+
+// ========================== 导出完整注册表（可选，供特殊场景使用）==========================
+export { toolRegistry };

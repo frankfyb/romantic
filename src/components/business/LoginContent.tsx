@@ -1,29 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Button from '@/components/common/Button';
 import RegisterContent from '@/components/business/RegisterContent';
 import ResetPasswordContent from '@/components/business/ResetPasswordContent';
+import { useAuthForm, type VerificationCodeType } from '@/hooks/useAuthForm';
 
-// 类型定义（增强类型安全）
+// 类型定义
 type LoginTab = 'login' | 'register' | 'reset';
 type LoginMode = 'password' | 'code';
-type SendCodeType = 'LOGIN' | 'REGISTER' | 'RESET';
 type LoginContentProps = {
   onLogin: () => void;
 };
 
-// 邮箱格式校验工具函数
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(email);
-};
-
 export default function LoginContent({ onLogin }: LoginContentProps) {
-  // 状态管理（细化拆分+初始值优化）
+  // 状态管理
   const [activeTab, setActiveTab] = useState<LoginTab>('login');
   const [loginMode, setLoginMode] = useState<LoginMode>('password');
   const [formState, setFormState] = useState({
@@ -31,110 +25,91 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
     password: '',
     code: '',
   });
-  const [sendingCode, setSendingCode] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 使用共享Hook
+  const {
+    countdown,
+    sendingCode,
+    loading,
+    fieldErrors,
+    validationStatus,
+    sendVerificationCode,
+    validateField,
+    setGlobalError,
+    clearGlobalError,
+    setLoading,
+  } = useAuthForm();
   
   const router = useRouter();
 
-  // 倒计时逻辑（性能优化：清理定时器）
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [countdown]);
-
-  // 表单值变更处理（统一管理）
+  // 表单值变更处理
   const handleFormChange = (field: keyof typeof formState, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
+    
     // 输入时清空错误提示
-    if (errorMessage) setErrorMessage('');
+    if (field !== 'code' && value) {
+      validateField(field, value);
+    }
+    
+    // 输入时清空全局错误
+    if (fieldErrors.global) {
+      clearGlobalError();
+    }
   };
 
-  // 发送验证码（增强校验+错误处理+适配多场景）
-  const handleSendCode = async (type: SendCodeType = 'LOGIN') => {
+  // 发送验证码
+  const handleSendCode = async (type: VerificationCodeType = 'LOGIN') => {
     const { email } = formState;
+    const success = await sendVerificationCode(email, type);
     
-    // 前置校验
-    if (!email) {
-      setErrorMessage('请输入邮箱地址');
-      return;
-    }
-    if (!validateEmail(email)) {
-      setErrorMessage('请输入有效的邮箱格式');
-      return;
-    }
-
-    setSendingCode(true);
-    setErrorMessage('');
-    
-    try {
-      const res = await fetch('/api/auth/email/code', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ email, type }),
-      });
-
-      if (!res.ok) throw new Error(`请求失败：${res.status}`);
-      
-      const data = await res.json();
-      
-      if (data.success || data.code === 200) {
-        setCountdown(60);
-        setErrorMessage('');
-      } else {
-        setErrorMessage(data.msg || '发送验证码失败，请稍后重试');
-      }
-    } catch (err) {
-      console.error('发送验证码错误：', err);
-      setErrorMessage('网络异常，验证码发送失败');
-    } finally {
-      setSendingCode(false);
+    // 如果是开发环境且发送成功，自动填充验证码
+    if (success && process.env.NODE_ENV !== 'production') {
+      // 这里不需要做任何事情，因为验证码会在sendVerificationCode中自动处理
     }
   };
 
-  // 登录处理（增强校验+加载状态+错误处理）
+  // 登录处理
   const handleLogin = async () => {
     const { email, password, code } = formState;
     
     // 通用校验
     if (!email) {
-      setErrorMessage('请输入邮箱地址');
+      setGlobalError('请输入邮箱地址');
       return;
     }
-    if (!validateEmail(email)) {
-      setErrorMessage('请输入有效的邮箱格式');
+    
+    if (!validationStatus.emailValid) {
+      setGlobalError('请输入有效的邮箱格式');
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage('');
+    setLoading(true);
+    clearGlobalError();
     
     try {
+      const ensureCsrf = async () => {
+        await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
+        if (!document.cookie.includes('authjs.csrf-token')) {
+          await new Promise((r) => setTimeout(r, 150));
+          await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
+        }
+      };
+      await ensureCsrf();
       let result;
       
+      // 预取 CSRF Token，确保双提交校验通过
+      let csrfToken: string | undefined;
+      try {
+        const csrfRes = await fetch('/api/auth/csrf', { credentials: 'same-origin' });
+        const csrfJson = await csrfRes.json();
+        csrfToken = csrfJson?.csrfToken;
+      } catch {}
+
       if (loginMode === 'password') {
         // 密码登录校验
         if (!password) {
-          setErrorMessage('请输入密码');
-          setIsSubmitting(false);
+          setGlobalError('请输入密码');
+          setLoading(false);
           return;
         }
         
@@ -142,17 +117,19 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
           email,
           password,
           redirect: false,
+          csrfToken,
+          callbackUrl: window.location.origin,
         });
       } else {
         // 验证码登录校验
         if (!code) {
-          setErrorMessage('请输入6位验证码');
-          setIsSubmitting(false);
+          setGlobalError('请输入6位验证码');
+          setLoading(false);
           return;
         }
         if (code.length !== 6 || isNaN(Number(code))) {
-          setErrorMessage('请输入有效的6位数字验证码');
-          setIsSubmitting(false);
+          setGlobalError('请输入有效的6位数字验证码');
+          setLoading(false);
           return;
         }
         
@@ -160,6 +137,8 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
           email,
           code,
           redirect: false,
+          csrfToken,
+          callbackUrl: window.location.origin,
         });
       }
 
@@ -174,7 +153,7 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
               ? '该邮箱尚未注册，请先注册'
               : result.error;
         
-        setErrorMessage(friendlyError);
+        setGlobalError(friendlyError);
       } else if (result?.ok) {
         // 登录成功回调
         onLogin();
@@ -183,21 +162,22 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
       }
     } catch (err) {
       console.error('登录错误：', err);
-      setErrorMessage('登录失败，请检查网络或重试');
+      setGlobalError('登录失败，请检查网络或重试');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   // 切换标签时重置状态
   const handleTabChange = (tab: LoginTab) => {
     setActiveTab(tab);
-    setErrorMessage('');
-    setCountdown(0);
+    clearGlobalError();
+    
     // 切换到登录标签时重置登录模式
     if (tab === 'login') {
       setLoginMode('password');
     }
+    
     // 重置表单（可选）
     setFormState({
       email: formState.email, // 保留邮箱
@@ -209,10 +189,10 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
   return (
     <div className="space-y-4 w-full max-w-md mx-auto">
       {/* 错误提示组件 */}
-      {errorMessage && (
+      {fieldErrors.global && (
         <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-600">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span className="text-sm">{errorMessage}</span>
+          <span className="text-sm">{fieldErrors.global}</span>
         </div>
       )}
 
@@ -281,7 +261,7 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
                          focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-transparent
                          text-slate-600 placeholder-pink-300 transition-all"
                 aria-label="邮箱地址"
-                disabled={isSubmitting}
+                disabled={loading}
               />
             </div>
 
@@ -298,7 +278,7 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
                            focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-transparent
                            text-slate-600 placeholder-pink-300 transition-all"
                   aria-label="密码"
-                  disabled={isSubmitting}
+                  disabled={loading}
                 />
               </div>
             ) : (
@@ -315,15 +295,15 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
                              focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-transparent
                              text-slate-600 placeholder-pink-300 transition-all"
                     aria-label="验证码"
-                    disabled={isSubmitting || countdown > 0}
+                    disabled={loading}
                   />
                 </div>
                 <Button
                   variant="secondary"
                   className="whitespace-nowrap min-w-[120px]"
                   onClick={() => handleSendCode('LOGIN')}
-                  disabled={sendingCode || countdown > 0 || isSubmitting || !formState.email}
-                  aria-disabled={sendingCode || countdown > 0 || isSubmitting}
+                  disabled={sendingCode || countdown > 0 || loading || !formState.email || !validationStatus.emailValid}
+                  aria-disabled={sendingCode || countdown > 0 || loading}
                 >
                   {countdown > 0 
                     ? `${countdown}s后重新获取` 
@@ -340,10 +320,10 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
             variant="primary" 
             className="w-full mt-4 py-2.5" 
             onClick={handleLogin}
-            disabled={isSubmitting}
+            disabled={loading}
             aria-label="登录"
           >
-            {isSubmitting ? '登录中...' : '登录'}
+            {loading ? '登录中...' : '登录'}
           </Button>
         </div>
       )}

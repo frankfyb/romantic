@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Heart, Sparkles, Gift, User, Search, Bell, Menu, X } from 'lucide-react';
 import Button from '../common/Button';
+import { useSession, signOut } from 'next-auth/react';
 import type { NavItem, PageKey } from '@/types';
 
 interface NavbarProps {
@@ -25,9 +26,19 @@ const Navbar = ({ currentPage, setCurrentPage, onLoginOpen }: NavbarProps) => {
   // 导航项配置
   const navItems: NavItem[] = [
     { id: 'home', label: '首页', icon: Sparkles },
-    { id: 'tools', label: '工具库', icon: Gift },
+    { id: 'rituals', label: '仪式库', icon: Gift },
     { id: 'profile', label: '我的', icon: User },
   ];
+
+  const { data: session, status } = useSession();
+
+  const userName = (() => {
+    const name = session?.user?.name || '';
+    const email = session?.user?.email || '';
+    if (name) return name;
+    if (email) return email.split('@')[0];
+    return '';
+  })();
 
   return (
     <nav className={`fixed top-0 w-full z-40 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm border-b border-pink-100' : 'bg-transparent'}`}>
@@ -69,9 +80,38 @@ const Navbar = ({ currentPage, setCurrentPage, onLoginOpen }: NavbarProps) => {
               <Bell className="w-5 h-5" />
               <span className="absolute top-0 right-0 w-2 h-2 bg-red-400 rounded-full ring-2 ring-white"></span>
             </button>
-            <Button variant="primary" className="!px-5 !py-1.5 text-sm" onClick={onLoginOpen}>
-              登录 / 注册
-            </Button>
+            {status === 'authenticated' && session?.user ? (
+              <div className="relative group">
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-slate-700 border border-pink-100 shadow-sm">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-400 text-white text-xs">
+                    {(session.user.image ? '🙂' : (userName ? userName[0]?.toUpperCase() : 'U'))}
+                  </span>
+                  <span className="text-sm font-medium max-w-[120px] truncate">{userName || '用户'}</span>
+                </button>
+                <div className="absolute right-0 mt-2 w-40 bg-white/95 backdrop-blur-xl border border-pink-100 rounded-xl shadow-xl p-2 hidden group-hover:block">
+                  <button
+                    className="w-full text-left px-3 py-2 rounded-lg text-slate-600 hover:bg-pink-50 hover:text-rose-600"
+                    onClick={() => setCurrentPage('profile')}
+                    aria-label="个人中心"
+                  >
+                    个人中心
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 rounded-lg text-slate-600 hover:bg-pink-50 hover:text-rose-600"
+                    onClick={() => signOut({ redirect: false })}
+                    aria-label="退出登录"
+                  >
+                    退出登录
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="primary" className="!px-5 !py-1.5 text-sm" onClick={onLoginOpen}>
+                  登录 / 注册
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Mobile Menu Button */}

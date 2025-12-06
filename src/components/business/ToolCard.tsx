@@ -41,7 +41,7 @@ const ToolCard = ({ tool, isHome = false, onClick }: ToolCardProps) => {
       </div>
       <h3 className="text-lg font-bold text-slate-700 mb-2">{tool.title}</h3>
       <p className="text-sm text-slate-500 mb-6">{tool.desc}</p>
-      <Button variant="secondary" className="w-full text-sm py-2">立即制作</Button>
+      <Button variant="secondary" className="w-full text-sm py-2" onClick={onClick}>立即制作</Button>
     </Card>
   );
 };

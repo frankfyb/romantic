@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { wechatConfig } from '@/lib/wechat';
+import { wechatConfig } from '../../back/wechat';
 
 /**
  * 微信签名验证中间件：仅拦截微信回调接口

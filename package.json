@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:test": "node -r ts-node/register -r tsconfig-paths/register ./src/scripts/seedTestData.ts",
+    "db:verify": "node -r ts-node/register -r tsconfig-paths/register ./src/scripts/verifyDb.ts"
   },
   "dependencies": {
     "@next-auth-oauth/wechatmp": "^0.2.5",
@@ -41,6 +43,8 @@
     "eslint-config-next": "16.0.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5"
   }
 }

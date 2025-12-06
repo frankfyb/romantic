@@ -5,7 +5,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider basePath="/api/auth">
+    <SessionProvider basePath="/api/auth" refetchOnWindowFocus={false} refetchInterval={0}>
       <ToastProvider>{children}</ToastProvider>
     </SessionProvider>
   );

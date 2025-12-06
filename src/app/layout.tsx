@@ -18,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className={`min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-yellow-50 font-sans text-slate-700 selection:bg-rose-200 selection:text-rose-700 ${inter.className}`}>
+      <body suppressHydrationWarning className={`min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-yellow-50 font-sans text-slate-700 selection:bg-rose-200 selection:text-rose-700 ${inter.className}`}>
         <AppProviders>
           <AppShell>{children}</AppShell>
         </AppProviders>

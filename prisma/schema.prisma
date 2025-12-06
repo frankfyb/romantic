@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-   output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -95,4 +94,61 @@ model EmailVerifyCode {
 
   // 唯一索引：防止同一邮箱同一类型重复生成未使用的验证码
   @@unique([email, type, isUsed])
+}
+// 分类字典表（统一管理分类）
+// 工具核心信息表
+model ToolMetadata {
+  id            String          @id @default(cuid())
+  toolKey       String          @unique
+  toolName      String
+  description   String?         @db.Text
+  tag           String?         // 多标签仍用逗号分隔（轻量场景）
+  defaultConfig Json            @db.JsonB
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  // 🔴 关键修复：显式声明反向关联（指定 name 确保双向匹配）
+  categories    ToolCategory[]  @relation("ToolToCategory")
+}
+
+// 分类字典表（统一管理分类）
+model Category {
+  id          String          @id @default(cuid())
+  name        String          @unique  // 分类名称（如「浪漫」「仪式感」「告白」）
+  description String?         @db.Text // 分类描述
+  sort        Int             @default(0) // 排序权重
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  // 🔴 补充反向关联（指定 name 确保双向匹配）
+  tools       ToolCategory[]  @relation("CategoryToTool")
+}
+
+// 工具-分类关联表（核心多对多映射）
+model ToolCategory {
+  id          String       @id @default(cuid())
+  toolId      String
+  categoryId  String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  // 关联关系：显式指定 name 与反向关联匹配
+  tool        ToolMetadata @relation("ToolToCategory", fields: [toolId], references: [id], onDelete: Cascade)
+  category    Category     @relation("CategoryToTool", fields: [categoryId], references: [id], onDelete: Cascade)
+  // 唯一约束：避免同一工具重复关联同一分类
+  @@unique([toolId, categoryId])
+}
+
+// 工具配置分享记录（用于生成分享链接与读取配置）
+model ToolConfig {
+  id         String   @id @default(cuid())
+  toolKey    String
+  config     Json
+  shareId    String   @unique
+  userId     String
+  fingerprint String?
+  isDeleted  Boolean  @default(false)
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([toolKey])
 }
