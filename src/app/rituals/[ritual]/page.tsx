@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ToolKey } from '@/types/tool';
-import { getToolUI } from '@/config/toolsRegistry';
+import { getToolUI, getToolConfigUI } from '@/config/toolsRegistry';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { getToolDefaultConfig, getToolName } from '@/config/toolsRegistry';
@@ -46,7 +46,12 @@ export default function ToolEditPage() {
           const metadata = json?.data;
           if (metadata) {
             setToolName(metadata.toolName);
-            setConfig(metadata.defaultConfig);
+            // 确保 customMessages 存在
+            const configWithDefaults = {
+              ...metadata.defaultConfig,
+              customMessages: metadata.defaultConfig.customMessages || []
+            };
+            setConfig(configWithDefaults);
             return;
           }
         }
@@ -57,7 +62,13 @@ export default function ToolEditPage() {
       // 如果API获取失败，使用本地配置
       try {
         setToolName(getToolName(ritual));
-        setConfig(getToolDefaultConfig(ritual));
+        const defaultConfig = getToolDefaultConfig(ritual);
+        // 确保 customMessages 存在
+        const configWithDefaults = {
+          ...defaultConfig,
+          customMessages: defaultConfig.customMessages || []
+        };
+        setConfig(configWithDefaults);
       } catch (error) {
         console.error('Failed to get tool config:', error);
         router.push('/404');
@@ -133,6 +144,7 @@ export default function ToolEditPage() {
 
   // 获取工具UI组件
   const DisplayUI = getToolUI(ritual);
+  const ConfigUI = getToolConfigUI(ritual);
 
   return (
     <div className="relative min-h-screen">
@@ -174,6 +186,23 @@ export default function ToolEditPage() {
         isPreview={false}
         onConfigChange={setConfig}
       />
+      
+      {/* 显示配置面板（如果存在） */}
+      {ConfigUI && ConfigUI !== (() => null) && (
+        <ConfigUI
+          config={config}
+          onConfigChange={setConfig}
+          onReset={() => {
+            const defaultConfig = getToolDefaultConfig(ritual);
+            // 确保 customMessages 存在
+            const configWithDefaults = {
+              ...defaultConfig,
+              customMessages: defaultConfig.customMessages || []
+            };
+            setConfig(configWithDefaults);
+          }}
+        />
+      )}
     </div>
   );
 }

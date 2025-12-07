@@ -172,7 +172,7 @@ export default function WarmTextCardConfigUI({
             </button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-             <span className="text-xs text-gray-400">已加载 {config.customMessages.length} 条语录</span>
+             <span className="text-xs text-gray-400">已加载 {(config.customMessages || []).length} 条语录</span>
           </div>
         </div>
 

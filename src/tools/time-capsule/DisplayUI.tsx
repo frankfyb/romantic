@@ -90,35 +90,46 @@ export default function TimeCapsuleDisplayUI({ config, isPreview = false, onConf
           )}
         </div>
 
-        {!isPreview && onConfigChange && (
-          <div className="mt-6 text-center">
-            <button
-              onClick={() =>
+        {/* 调试按钮 - 在预览模式下也显示，但功能受限 */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              // 在预览模式下不真正改变配置，只显示提示
+              if (isPreview) {
+                alert('这是预览模式，无法真正修改配置');
+              } else if (onConfigChange) {
                 onConfigChange({
                   ...config,
                   openDate: new Date(Date.now() + 2_000).toISOString().slice(0, 16),
-                })
+                });
               }
-              className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
-            >
-              调试：2秒后解锁
-            </button>
-          </div>
-        )}
-      </div>
-
-      {!isPreview && onConfigChange && (
-        <div className="absolute top-4 right-4 z-50 flex gap-2">
-          <button
-            onClick={() => setShowConfig(!showConfig)}
-            className="p-2 bg-white/20 backdrop-blur-md hover:bg-white/40 rounded-full text-white shadow-sm transition-all"
-            title="设置"
+            }}
+            className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
           >
-            {showConfig ? <X size={20} /> : <Settings size={20} />}
+            调试：2秒后解锁
           </button>
         </div>
-      )}
+      </div>
 
+      {/* 设置按钮 - 在预览模式下也显示，但功能受限 */}
+      <div className="absolute top-4 right-4 z-50 flex gap-2">
+        <button
+          onClick={() => {
+            // 在预览模式下不真正切换配置面板，只显示提示
+            if (isPreview) {
+              alert('这是预览模式，无法修改配置');
+            } else if (onConfigChange) {
+              setShowConfig(!showConfig);
+            }
+          }}
+          className="p-2 bg-white/20 backdrop-blur-md hover:bg-white/40 rounded-full text-white shadow-sm transition-all"
+          title="设置"
+        >
+          {showConfig ? <X size={20} /> : <Settings size={20} />}
+        </button>
+      </div>
+
+      {/* 配置面板 - 在预览模式下不显示 */}
       {!isPreview && onConfigChange && showConfig && (
         <TimeCapsuleConfigUI
           config={config}

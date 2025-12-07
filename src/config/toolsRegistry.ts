@@ -2,10 +2,13 @@ import { ToolKey } from '@/types/tool';
 import WarmTextCardDisplayUI from '@/tools/warm-text-card/DisplayUI';
 import { defaultConfig as warmTextDefaultConfig } from '@/tools/warm-text-card/config';
 import TimeCapsuleDisplayUI from '@/tools/time-capsule/DisplayUI';
+import TimeCapsuleConfigUI from '@/tools/time-capsule/ConfigUI';
 import { defaultConfig as timeCapsuleDefaultConfig } from '@/tools/time-capsule/config';
 import StarrySkyDisplayUI from '@/tools/starry-sky/DisplayUI';
+import StarrySkyConfigUI from '@/tools/starry-sky/ConfigUI';
 import { defaultConfig as starrySkyDefaultConfig } from '@/tools/starry-sky/config';
 import MemoryBoxDisplayUI from '@/tools/memory-box/DisplayUI';
+import MemoryBoxConfigUI from '@/tools/memory-box/ConfigUI';
 import { defaultConfig as memoryBoxDefaultConfig } from '@/tools/memory-box/config';
 
 // ========================== 类型定义（强化类型约束）==========================
@@ -16,11 +19,9 @@ interface ToolBasicConfig {
   // 工具显示名称
   name: string;
   // 工具可视化组件
-  DisplayUI: React.ComponentType<{
-    config: Record<string, any>;
-    isPreview: boolean;
-    onConfigChange?: (config: Record<string, any>) => void;
-  }>;
+  DisplayUI: React.ComponentType<any>;
+  // 工具配置组件
+  ConfigUI: React.ComponentType<any>;
   // 工具默认配置
   defaultConfig: Record<string, any>;
 }
@@ -39,21 +40,25 @@ const toolRegistry: ToolRegistry = {
   'warm-text-card': {
     name: '温馨文字卡片',
     DisplayUI: WarmTextCardDisplayUI,
+    ConfigUI: () => null, // 这个工具还没有配置UI
     defaultConfig: warmTextDefaultConfig,
   },
   'time-capsule': {
     name: '时光胶囊',
     DisplayUI: TimeCapsuleDisplayUI,
+    ConfigUI: TimeCapsuleConfigUI,
     defaultConfig: timeCapsuleDefaultConfig,
   },
   'starry-sky': {
     name: '星河情书',
     DisplayUI: StarrySkyDisplayUI,
+    ConfigUI: StarrySkyConfigUI,
     defaultConfig: starrySkyDefaultConfig,
   },
   'memory-box': {
     name: '回忆盲盒',
     DisplayUI: MemoryBoxDisplayUI,
+    ConfigUI: MemoryBoxConfigUI,
     defaultConfig: memoryBoxDefaultConfig,
   },
 };
@@ -84,6 +89,13 @@ const getToolConfig = <T extends keyof ToolBasicConfig>(
  */
 export const getToolUI = (toolKey: ToolKey) => {
   return getToolConfig(toolKey, 'DisplayUI');
+};
+
+/**
+ * 获取工具配置UI组件
+ */
+export const getToolConfigUI = (toolKey: ToolKey) => {
+  return getToolConfig(toolKey, 'ConfigUI');
 };
 
 /**

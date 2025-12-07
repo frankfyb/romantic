@@ -72,6 +72,7 @@ export default function ToolSharePage() {
     <DisplayUI 
       config={configRecord.config}
       isPreview={true}
+      onConfigChange={() => {}} // 空函数，因为分享页面不应该允许修改配置
     />
   );
 }

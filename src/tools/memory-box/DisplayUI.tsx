@@ -49,15 +49,16 @@ export default function MemoryBoxDisplayUI({
   // 检查是否所有卡片都已翻转
   useEffect(() => {
     const allFlipped = cards.length > 0 && cards.every(card => card.isFlipped);
-    if (allFlipped && !showCelebration && !isPreview) {
+    // 移除了 isPreview 的限制，允许在预览模式下也触发展示庆祝效果
+    if (allFlipped && !showCelebration) {
       const timer = setTimeout(() => setShowCelebration(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [cards, showCelebration, isPreview]);
+  }, [cards, showCelebration]);
 
   // 处理卡片点击翻转
   const handleCardClick = (id: number) => {
-    if (isPreview) return;
+    // 移除了 isPreview 的限制，允许在预览模式下点击盲盒
     setCards(prev => prev.map(c => c.id === id ? { ...c, isFlipped: !c.isFlipped } : c));
   };
 
@@ -69,7 +70,7 @@ export default function MemoryBoxDisplayUI({
 
   // 手动触发全屏效果（调试用，非预览模式显示）
   const handleTriggerCelebration = () => {
-    if (isPreview) return;
+    // 移除了 isPreview 的限制，允许在预览模式下也手动触发庆祝效果
     setShowCelebration(true);
   };
 
@@ -144,22 +145,21 @@ export default function MemoryBoxDisplayUI({
         </div>
         
         {/* 调试按钮（仅非预览模式显示） */}
-        {!isPreview && (
-          <div className="mt-8 flex gap-4">
-            <button 
-              onClick={handleTriggerCelebration}
-              className={`px-4 py-2 rounded-lg text-white font-medium shadow-md ${themeStyles.btn}`}
-            >
-              预览全屏效果
-            </button>
-            <button 
-              onClick={handleResetCards}
-              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors"
-            >
-              重置所有卡片
-            </button>
-          </div>
-        )}
+        {/* 修改了条件判断，允许在预览模式下也显示调试按钮 */}
+        <div className="mt-8 flex gap-4">
+          <button 
+            onClick={handleTriggerCelebration}
+            className={`px-4 py-2 rounded-lg text-white font-medium shadow-md ${themeStyles.btn}`}
+          >
+            预览全屏效果
+          </button>
+          <button 
+            onClick={handleResetCards}
+            className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors"
+          >
+            重置所有卡片
+          </button>
+        </div>
       </main>
 
       {/* 全屏庆祝覆盖层 */}

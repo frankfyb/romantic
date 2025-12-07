@@ -90,7 +90,9 @@ export default function WarmTextCardDisplayUI({
   // 生成新卡片
   const generateCard = useCallback(() => {
     setCards(prev => {
-      if (prev.length >= config.maxCards) {
+      // 确保 config.customMessages 存在且有内容
+      const messages = config.customMessages || [];
+      if (messages.length === 0 || prev.length >= config.maxCards) {
         setIsPlaying(false);
         return prev;
       }
@@ -100,7 +102,7 @@ export default function WarmTextCardDisplayUI({
       
       const newCard = {
         id: Date.now() + Math.random(),
-        text: config.customMessages[randomInt(0, config.customMessages.length - 1)],
+        text: messages[randomInt(0, messages.length - 1)],
         x: randomFloat(5, 95),
         y: randomFloat(5, 95),
         rotate: randomInt(-15, 15),

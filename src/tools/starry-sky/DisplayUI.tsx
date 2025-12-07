@@ -117,7 +117,7 @@ export default function StarrySkyDisplayUI({
 
   // 鼠标/触摸事件处理
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-    if (isPreview) return; // 预览模式禁用拖拽配置
+    // 移除了 isPreview 的限制，允许在预览模式下也有基本的交互
     setIsDragging(true);
     const { x, y } = getEventPos(e);
     lastMousePos.current = { x, y };
@@ -131,7 +131,9 @@ export default function StarrySkyDisplayUI({
     const { x, y } = getEventPos(e);
     setMousePos({ x, y });
     
-    if (isDragging && !isPreview) {
+    // 在预览模式下也允许基本的鼠标移动交互（点亮星星）
+    // 修改了条件判断，允许在预览模式下也有拖拽交互
+    if (isDragging) {
       const dx = x - lastMousePos.current.x;
       const dy = y - lastMousePos.current.y;
       const speed = Math.sqrt(dx * dx + dy * dy);
@@ -149,8 +151,8 @@ export default function StarrySkyDisplayUI({
         });
       }
       
-      // 生成文字
-      if (config.showTextOnDrag && speed > 5 && Math.random() > 0.7) {
+      // 生成文字（仅在非预览模式下）
+      if (!isPreview && config.showTextOnDrag && speed > 5 && Math.random() > 0.7) {
         const fullText = config.confessionText || 'I Love You';
         const char = fullText[textIndexRef.current % fullText.length];
         textIndexRef.current++;
@@ -177,7 +179,7 @@ export default function StarrySkyDisplayUI({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isPreview) return;
+    // 移除了 isPreview 的限制，允许在预览模式下也有点击交互
     if (!canvasRef.current) return;
     const { x, y } = getEventPos(e);
     const nearbyStars = starsRef.current
