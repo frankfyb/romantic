@@ -71,7 +71,6 @@ export default function ToolEditPage() {
         setConfig(configWithDefaults);
       } catch (error) {
         console.error('Failed to get tool config:', error);
-        router.push('/404');
       }
     };
 

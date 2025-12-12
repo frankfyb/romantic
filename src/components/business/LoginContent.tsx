@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, getCsrfToken } from 'next-auth/react';
 import Button from '@/components/common/Button';
 import RegisterContent from '@/components/business/RegisterContent';
 import ResetPasswordContent from '@/components/business/ResetPasswordContent';
@@ -87,24 +87,10 @@ export default function LoginContent({ onLogin }: LoginContentProps) {
     clearGlobalError();
     
     try {
-      const ensureCsrf = async () => {
-        await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
-        if (!document.cookie.includes('authjs.csrf-token')) {
-          await new Promise((r) => setTimeout(r, 150));
-          await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
-        }
-      };
-      await ensureCsrf();
+      // 获取CSRF Token
+      const csrfToken = await getCsrfToken();
       let result;
       
-      // 预取 CSRF Token，确保双提交校验通过
-      let csrfToken: string | undefined;
-      try {
-        const csrfRes = await fetch('/api/auth/csrf', { credentials: 'same-origin' });
-        const csrfJson = await csrfRes.json();
-        csrfToken = csrfJson?.csrfToken;
-      } catch {}
-
       if (loginMode === 'password') {
         // 密码登录校验
         if (!password) {

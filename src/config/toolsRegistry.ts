@@ -10,6 +10,9 @@ import { defaultConfig as starrySkyDefaultConfig } from '@/tools/starry-sky/conf
 import MemoryBoxDisplayUI from '@/tools/memory-box/DisplayUI';
 import MemoryBoxConfigUI from '@/tools/memory-box/ConfigUI';
 import { defaultConfig as memoryBoxDefaultConfig } from '@/tools/memory-box/config';
+import { DEFAULT_CONFIG as christmasDefaultConfig } from '@/tools/christmas-card/config';
+import ChristmasCardDisplayUI from '@/tools/christmas-card/DisplayUI';
+import ChristmasCardConfigUI from '@/tools/christmas-card/ConfigUI';
 
 // ========================== 类型定义（强化类型约束）==========================
 /**
@@ -60,6 +63,12 @@ const toolRegistry: ToolRegistry = {
     DisplayUI: MemoryBoxDisplayUI,
     ConfigUI: MemoryBoxConfigUI,
     defaultConfig: memoryBoxDefaultConfig,
+  },
+  'christmas-card': {
+    name: '圣诞贺卡',
+    DisplayUI: ChristmasCardDisplayUI,
+    ConfigUI: ChristmasCardConfigUI,
+    defaultConfig: christmasDefaultConfig,
   },
 };
 
